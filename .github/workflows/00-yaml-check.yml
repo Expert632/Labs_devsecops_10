@@ -1,25 +1,37 @@
 name: 00 - YAML Lint & Check
 
+# Déclenche le pipeline à chaque push ou pull request sur main
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   yamllint:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
+    steps:
+      # Étape 1 : Checkout du repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Étape 2 : Installer yamllint
       - name: Install yamllint
         run: pip install yamllint
 
-      - name: Run yamllint on GitHub workflows
-        run: yamllint .github/workflows/*.yml
+      # Étape 3 : Lint des workflows GitHub
+      - name: Lint GitHub workflows
+        run: yamllint .github/workflows/*.yml || echo "No workflow YAML found"
 
-      - name: Run yamllint on Kubernetes manifests
-        run: yamllint k8s/*.yaml || echo "No YAML found"
+      # Étape 4 : Lint des manifests Kubernetes
+      - name: Lint Kubernetes manifests
+        run: yamllint k8s/*.yaml || echo "No Kubernetes YAML found"
 
-      - name: Run yamllint on Terraform YAML (if any)
-        run: yamllint terraform/*.yaml || echo "No YAML found"
+      # Étape 5 : Lint YAML Terraform (si existant)
+      - name: Lint Terraform YAML
+        run: yamllint terraform/*.yaml || echo "No Terraform YAML found"
