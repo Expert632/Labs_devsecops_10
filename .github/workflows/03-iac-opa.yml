@@ -1,0 +1,52 @@
+---
+name: 03 - IaC OPA Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  iac-opa:
+    name: IaC policy check (Conftest / Rego)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ensure terraform and policies exist
+        run: |
+          if [ ! -d "terraform" ]; then
+            echo "No terraform directory - skipping terraform checks"
+          fi
+          if [ ! -d "policies" ]; then
+            echo "No policies directory - skipping policy checks"
+          fi
+
+      - name: Run Conftest on Terraform
+        if: always()
+        uses: instrumenta/conftest-action@v1
+        with:
+          args: test terraform/
+        # Conftest will exit non-zero on policy failures.
+        # If terraform/ is missing, Conftest returns 0 and prints nothing.
+
+      - name: Run Conftest on Kubernetes manifests
+        if: always()
+        uses: instrumenta/conftest-action@v1
+        with:
+          args: test k8s/
+
+      - name: Report success when policies passed
+        if: ${{ success() }}
+        run: echo "✅ IaC policy checks passed."
+
+      - name: Report warning when policies failed
+        if: ${{ failure() }}
+        run: echo "⚠️ Some IaC policy checks failed. Fix policies or adjust rules."
