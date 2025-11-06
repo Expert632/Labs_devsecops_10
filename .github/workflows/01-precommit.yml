@@ -1,0 +1,49 @@
+name: 01 - Pre-commit Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  precommit:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout du repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Installer Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # 3️⃣ Installer dépendances si requirements.txt existe
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # 4️⃣ Installer flake8 pour linting
+      - name: Install flake8
+        run: pip install flake8
+
+      # 5️⃣ Lint Python code seulement si dossier app/ existe
+      - name: Lint Python code
+        run: |
+          if [ -d app ]; then flake8 app/; else echo "No app folder, skipping lint"; fi
+
+      # 6️⃣ Installer pytest pour tests unitaires
+      - name: Install pytest
+        run: pip install pytest
+
+      # 7️⃣ Run unit tests seulement si dossier app/ existe
+      - name: Run unit tests
+        run: |
+          if [ -d app ]; then pytest app/; else echo "No tests, skipping pytest"; fi
