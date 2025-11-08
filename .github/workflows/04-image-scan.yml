@@ -1,0 +1,66 @@
+---
+name: 04 - Docker Image Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  docker-scan:
+    name: Build and Scan Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:latest .
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: myapp:latest
+          format: 'json'
+          output: 'trivy-report.json'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Display scan summary
+        run: |
+          echo "=== Résumé du Scan ==="
+          if [ -f trivy-report.json ]; then
+            cat trivy-report.json | jq '.Results[]?.Vulnerabilities[]? | .Severity' | sort | uniq -c || true
+          else
+            echo "Aucun rapport trouvé."
+          fi
+
+      - name: Fail only if CRITICAL vulnerabilities found
+        run: |
+          if [ -f trivy-report.json ]; then
+            crit=$(cat trivy-report.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length')
+            if [ "$crit" -gt 0 ]; then
+              echo "🚨 $crit vulnérabilité(s) CRITIQUE détectée(s) !"
+              exit 1
+            else
+              echo "✅ Aucun problème critique détecté, tout est vert."
+            fi
+          else
+            echo "Aucun rapport trouvé, job marqué comme réussi."
+          fi
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.json
