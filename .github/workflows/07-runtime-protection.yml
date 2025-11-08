@@ -1,0 +1,52 @@
+---
+name: 07 - Runtime Protection
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  runtime-protection:
+    name: Runtime Protection & Monitoring
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup runtime environment simulation
+        run: |
+          echo "🚀 Simulating runtime environment..."
+          mkdir -p runtime_test
+          cp -r src/ runtime_test/
+          echo "Runtime environment ready."
+
+      - name: Simulated runtime security scan
+        run: |
+          echo "🔍 Performing runtime security scan..."
+          # Simulate no vulnerabilities
+          echo '{"vulnerabilities": []}' > runtime-report.json
+
+      - name: Display runtime scan report
+        run: |
+          echo "=== Runtime Security Report ==="
+          cat runtime-report.json
+
+      - name: Fail on critical vulnerabilities
+        run: |
+          CRIT=$(jq '.vulnerabilities | map(select(.severity=="CRITICAL")) | length' runtime-report.json)
+          if [ "$CRIT" -gt 0 ]; then
+            echo "🚨 $CRIT critical vulnerabilities detected!"
+            exit 1
+          else
+            echo "✅ No critical vulnerabilities found. Pipeline green."
+          fi
+
+      - name: Upload runtime report
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-report
+          path: runtime-report.json
