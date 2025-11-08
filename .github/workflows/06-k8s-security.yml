@@ -1,0 +1,59 @@
+---
+name: 06 - Kubernetes Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  k8s-scan:
+    name: K8S Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Conftest
+        run: |
+          curl -L https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_0.40.0_Linux_x86_64.tar.gz | tar xz -C /usr/local/bin
+
+      - name: Scan Kubernetes manifests with Conftest
+        run: |
+          mkdir -p reports
+          # On suppose que les manifests K8S sont dans ./kubernetes
+          for file in kubernetes/*.yaml; do
+            conftest test $file --output json > reports/$(basename $file)-report.json || true
+          done
+
+      - name: Aggregate K8S scan results
+        run: |
+          CRIT=0
+          for r in reports/*-report.json; do
+            if [ -f "$r" ]; then
+              python3 - <<'PY'
+import json,sys,os
+crit=0
+for report_file in os.listdir('reports'):
+    with open(os.path.join('reports', report_file)) as f:
+        data=json.load(f)
+        for res in data:
+            if res.get('result','').upper()=='FAIL' and res.get('severity','').upper()=='CRITICAL':
+                crit+=1
+print(f"Critical violations found: {crit}")
+sys.exit(crit)
+PY
+            fi
+          done
+
+      - name: Upload K8S scan reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-reports
+          path: reports/
