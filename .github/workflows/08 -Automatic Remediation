@@ -1,0 +1,39 @@
+name: 08 - Automatic Remediation
+
+on:
+  workflow_run:
+    workflows: ["07 - Runtime Protection"]
+    types:
+      - completed
+
+jobs:
+  remediation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch vulnerabilities from DefectDojo
+        run: |
+          python scripts/fetch_vulns.py --severity CRITICAL --output vuln_list.json
+
+      - name: Automatic remediation
+        run: |
+          python scripts/remediate.py --input vuln_list.json || true
+
+      - name: Push remediation changes
+        run: |
+          git config --global user.email "ci@lab.com"
+          git config --global user.name "CI Lab"
+          git add .
+          git commit -m "Automatic remediation applied" || echo "No changes to commit"
+          git push origin main || echo "Push skipped"
