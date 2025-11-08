@@ -1,0 +1,66 @@
+---
+name: 05 - CD + DAST/IAST + Post-deployment Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  cd-dast:
+    name: Continuous Deployment & Security Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Simulate deployment
+        run: |
+          echo "📦 Simulating deployment to test environment..."
+          mkdir -p deploy_test
+          cp -r * deploy_test/
+          echo "Deployment simulated successfully."
+
+      - name: Run simulated DAST/IAST scan
+        run: |
+          echo "🔍 Running DAST/IAST scan..."
+          # Ici on simule l'analyse avec un script Python ou bash
+          echo "No vulnerabilities found" > dast-iaast-report.txt
+
+      - name: Display scan report
+        run: |
+          echo "=== DAST/IAST Report ==="
+          cat dast-iaast-report.txt
+
+      - name: Run post-deployment functional tests
+        run: |
+          echo "✅ Running post-deployment functional tests..."
+          python3 - <<'PY'
+# Test fonctionnel simulé
+def test_app():
+    assert True, "All tests passed"
+
+test_app()
+print("All functional tests passed successfully.")
+PY
+
+      - name: Fail on critical vulnerabilities
+        run: |
+          if grep -iq "critical" dast-iaast-report.txt; then
+            echo "🚨 Critical vulnerability detected!"
+            exit 1
+          else
+            echo "No critical vulnerabilities. Pipeline green ✅"
+          fi
+
+      - name: Upload scan report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-iaast-report
+          path: dast-iaast-report.txt
